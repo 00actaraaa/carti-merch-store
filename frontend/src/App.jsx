@@ -494,9 +494,18 @@ function AccountPage({ token, setToken }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     })
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({ message: "Network error" }));
+          throw new Error(d?.message || "Login failed");
+        }
+        return r.json();
+      })
       .then((d) => {
         if (d?.message) return alert(d.message);
+        if (!d?.token) {
+          return alert("Invalid response from server");
+        }
         localStorage.setItem("token", d.token);
         localStorage.setItem("userEmail", email); // Сохраняем email
         setToken(d.token);
@@ -505,7 +514,11 @@ function AccountPage({ token, setToken }) {
       })
       .catch((err) => {
         console.error("Login error:", err);
-        alert("Server error. Please check if backend is running.");
+        if (err.message === "Failed to fetch" || err.message === "Network error") {
+          alert("Cannot connect to server. Backend is not available. Please run the backend server locally on http://localhost:3001");
+        } else {
+          alert(err.message || "Login failed. Please try again.");
+        }
       });
   }
 
@@ -605,9 +618,11 @@ function RegisterPage() {
       body: JSON.stringify({ email, password }),
     })
       .then(async (r) => {
-        const d = await r.json().catch(() => ({ message: "Server error" }));
-        if (!r.ok) throw new Error(d?.message || "Registration failed");
-        return d;
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({ message: "Network error" }));
+          throw new Error(d?.message || "Registration failed");
+        }
+        return r.json();
       })
       .then((d) => {
         if (d?.message) return alert(d.message);
@@ -616,7 +631,11 @@ function RegisterPage() {
       })
       .catch((err) => {
         console.error("Register error:", err);
-        alert(err.message || "Server error. Please check if backend is running.");
+        if (err.message === "Failed to fetch" || err.message === "Network error") {
+          alert("Cannot connect to server. Backend is not available. Please run the backend server locally on http://localhost:3001");
+        } else {
+          alert(err.message || "Registration failed. Please try again.");
+        }
       });
   }
 
