@@ -346,13 +346,26 @@ function CheckoutPage({ cart, setCart, subtotal }) {
         customer: { name: custName, phone: custPhone, address: custAddress },
       }),
     })
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({ message: "Network error" }));
+          throw new Error(data?.message || "Order creation failed");
+        }
+        return r.json();
+      })
       .then((data) => {
         if (data?.message) return alert(data.message);
         setCart([]);
         navigate(`/success?orderId=${data.id}`);
       })
-      .catch(() => alert("Server error"));
+      .catch((err) => {
+        console.error("Order creation error:", err);
+        if (err.message === "Failed to fetch" || err.message === "Network error") {
+          alert("Cannot connect to server. Backend is not available. Please run the backend server locally on http://localhost:3001");
+        } else {
+          alert(err.message || "Failed to create order. Please try again.");
+        }
+      });
   }
 
   return (
