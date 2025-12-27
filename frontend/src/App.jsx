@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Routes, Route, Link, useNavigate, useSearchParams } from "react-router-dom";
+import { API_BASE_URL } from "./config";
 
 function money(n) {
   const v = Number(n || 0);
@@ -337,7 +338,7 @@ function CheckoutPage({ cart, setCart, subtotal }) {
     if (!custPhone.trim()) return alert("Enter phone");
     if (!custAddress.trim()) return alert("Enter address");
 
-    fetch("http://localhost:3001/orders", {
+    fetch(`${API_BASE_URL}/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -463,7 +464,7 @@ function AccountPage({ token, setToken }) {
     if (token) {
       setLoading(true);
       const savedEmail = localStorage.getItem("userEmail");
-      fetch("http://localhost:3001/me", {
+      fetch(`${API_BASE_URL}/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((r) => r.json())
@@ -488,7 +489,7 @@ function AccountPage({ token, setToken }) {
 
   function login(e) {
     e.preventDefault();
-    fetch("http://localhost:3001/auth/login", {
+    fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -501,6 +502,10 @@ function AccountPage({ token, setToken }) {
         setToken(d.token);
         alert("Logged in");
         navigate("/");
+      })
+      .catch((err) => {
+        console.error("Login error:", err);
+        alert("Server error. Please check if backend is running.");
       });
   }
 
@@ -594,16 +599,24 @@ function RegisterPage() {
 
   function register(e) {
     e.preventDefault();
-    fetch("http://localhost:3001/auth/register", {
+    fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     })
-      .then((r) => r.json())
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({ message: "Server error" }));
+        if (!r.ok) throw new Error(d?.message || "Registration failed");
+        return d;
+      })
       .then((d) => {
         if (d?.message) return alert(d.message);
         alert("Registered. Now sign in.");
         navigate("/account");
+      })
+      .catch((err) => {
+        console.error("Register error:", err);
+        alert(err.message || "Server error. Please check if backend is running.");
       });
   }
 
@@ -678,9 +691,13 @@ function AdminProductsPage({ token }) {
   }
 
   function load() {
-    fetch("http://localhost:3001/products")
+    fetch(`${API_BASE_URL}/products`)
       .then((r) => r.json())
-      .then((d) => setItems(Array.isArray(d) ? d : []));
+      .then((d) => setItems(Array.isArray(d) ? d : []))
+      .catch((err) => {
+        console.error("Error loading products:", err);
+        setItems([]);
+      });
   }
 
   useEffect(() => {
@@ -699,7 +716,7 @@ function AdminProductsPage({ token }) {
     if (!isAdmin) return setError("Not admin. Login as admin.");
     const h = authHeaders();
 
-    fetch("http://localhost:3001/products", {
+    fetch(`${API_BASE_URL}/products`, {
       method: "POST",
       headers: h,
       body: JSON.stringify({ name, price: Number(price), imageUrl, category }),
@@ -741,7 +758,7 @@ function AdminProductsPage({ token }) {
     if (!isAdmin) return setError("Not admin. Login as admin.");
     const h = authHeaders();
 
-    fetch(`http://localhost:3001/products/${editId}`, {
+      fetch(`${API_BASE_URL}/products/${editId}`, {
       method: "PUT",
       headers: h,
       body: JSON.stringify({
@@ -769,7 +786,7 @@ function AdminProductsPage({ token }) {
     if (!isAdmin) return setError("Not admin. Login as admin.");
     const h = authHeaders();
 
-    fetch(`http://localhost:3001/products/${id}`, {
+    fetch(`${API_BASE_URL}/products/${id}`, {
       method: "DELETE",
       headers: h,
     })
@@ -1041,7 +1058,7 @@ function AdminOrdersPage({ token }) {
 
     // try /admin/orders first, fallback to /orders
     const tryAdmin = () =>
-      fetch("http://localhost:3001/admin/orders", {
+      fetch(`${API_BASE_URL}/admin/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then(async (r) => {
         if (r.ok) return r.json();
@@ -1049,7 +1066,7 @@ function AdminOrdersPage({ token }) {
       });
 
     const tryPublic = () =>
-      fetch("http://localhost:3001/orders").then((r) => r.json());
+      fetch(`${API_BASE_URL}/orders`).then((r) => r.json());
 
     tryAdmin()
       .catch(() => tryPublic())
@@ -1133,10 +1150,13 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
 
   function loadProducts() {
-    fetch("http://localhost:3001/products")
+    fetch(`${API_BASE_URL}/products`)
       .then((r) => r.json())
       .then((d) => setProducts(Array.isArray(d) ? d : []))
-      .catch(() => setProducts([]));
+      .catch((err) => {
+        console.error("Error loading products:", err);
+        setProducts([]);
+      });
   }
 
   useEffect(() => {
