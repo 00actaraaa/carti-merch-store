@@ -515,6 +515,18 @@ function AccountPage({ token, setToken }) {
 
   function login(e) {
     e.preventDefault();
+    
+    // Проверка для админа без backend (fallback для GitHub Pages)
+    if (email === "admin@test.com" && password === "admin123") {
+      // Создаем простой mock token для админа
+      const mockToken = btoa(JSON.stringify({ id: 1, role: "admin", email: "admin@test.com" }));
+      localStorage.setItem("token", mockToken);
+      localStorage.setItem("userEmail", email);
+      setToken(mockToken);
+      navigate("/");
+      return;
+    }
+    
     fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -533,15 +545,14 @@ function AccountPage({ token, setToken }) {
           return alert("Invalid response from server");
         }
         localStorage.setItem("token", d.token);
-        localStorage.setItem("userEmail", email); // Сохраняем email
+        localStorage.setItem("userEmail", email);
         setToken(d.token);
-        alert("Logged in");
         navigate("/");
       })
       .catch((err) => {
-        console.error("Login error:", err);
+        // Если backend недоступен и это не админ, показываем ошибку
         if (err.message === "Failed to fetch" || err.message === "Network error") {
-          alert("Cannot connect to server. Backend is not available. Please run the backend server locally on http://localhost:3001");
+          alert("Cannot connect to server. For demo, use admin@test.com / admin123");
         } else {
           alert(err.message || "Login failed. Please try again.");
         }
