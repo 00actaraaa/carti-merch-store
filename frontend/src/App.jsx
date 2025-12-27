@@ -8,6 +8,8 @@ function money(n) {
 }
 
 // Получить правильный путь к изображению с учетом base path для GitHub Pages
+// Vite автоматически добавляет base path из vite.config.js к статическим ресурсам,
+// но для путей, хранящихся в базе данных, нужно добавлять base path вручную
 function getImagePath(path) {
   if (!path) return path;
   
@@ -21,16 +23,12 @@ function getImagePath(path) {
     return path;
   }
   
-  // Для путей, начинающихся с /, добавляем base path только если мы на GitHub Pages
-  // Определяем по hostname (github.io) или по базовому пути в window.location
-  const isGitHubPages = window.location.hostname.includes('github.io') || 
-                        window.location.pathname.startsWith('/carti-merch-store');
-  
-  if (path.startsWith('/') && isGitHubPages) {
+  // Для путей, начинающихся с /, добавляем base path
+  // Это работает и на GitHub Pages, и на localhost (т.к. vite.config.js имеет base: '/carti-merch-store/')
+  if (path.startsWith('/')) {
     return '/carti-merch-store' + path;
   }
   
-  // Для локальной разработки возвращаем путь как есть
   return path;
 }
 
