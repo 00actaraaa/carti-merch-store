@@ -7,6 +7,24 @@ function money(n) {
   return `$${v.toFixed(2)}`;
 }
 
+// Получить правильный путь к изображению с учетом base path для GitHub Pages
+function getImagePath(path) {
+  if (!path) return path;
+  // Если путь начинается с /img/, добавляем base path
+  if (path.startsWith('/img/')) {
+    return '/carti-merch-store' + path;
+  }
+  // Если это внешний URL, возвращаем как есть
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  // Для относительных путей, начинающихся с /, добавляем base path
+  if (path.startsWith('/')) {
+    return '/carti-merch-store' + path;
+  }
+  return path;
+}
+
 function getRoleFromToken(t) {
   if (!t) return null;
   try {
@@ -166,7 +184,7 @@ function ShopPage({
             <div key={p.id} className="card">
               <div className="imgPlaceholder">
                 {p.imageUrl ? (
-                  <img className="productImg" src={p.imageUrl} alt={p.name} />
+                  <img className="productImg" src={getImagePath(p.imageUrl)} alt={p.name} />
                 ) : null}
               </div>
 
@@ -244,7 +262,7 @@ function ShopPage({
                   <div key={i.productId} className="cartRow">
                     <div className="thumb">
                       {i.imageUrl ? (
-                        <img className="thumbImg" src={i.imageUrl} alt={i.name} />
+                        <img className="thumbImg" src={getImagePath(i.imageUrl)} alt={i.name} />
                       ) : null}
                     </div>
 
@@ -376,7 +394,7 @@ function CheckoutPage({ cart, setCart, subtotal }) {
             <div key={i.productId} className="summaryRow">
               <div className="summaryThumb">
                 {i.imageUrl ? (
-                  <img className="summaryImg" src={i.imageUrl} alt={i.name} />
+                  <img className="summaryImg" src={getImagePath(i.imageUrl)} alt={i.name} />
                 ) : null}
                 <span className="summaryBadge">{i.qty}</span>
               </div>
@@ -645,11 +663,11 @@ function AdminProductsPage({ token }) {
   ];
 
   function selectImage(filename) {
-    setImageUrl(`/img/${filename}`);
+    setImageUrl(`/carti-merch-store/img/${filename}`);
   }
 
   function selectEditImage(filename) {
-    setEditImageUrl(`/img/${filename}`);
+    setEditImageUrl(`/carti-merch-store/img/${filename}`);
   }
 
   function load() {
@@ -844,7 +862,7 @@ function AdminProductsPage({ token }) {
               <div style={{ marginTop: 8, padding: 8, border: "1px solid #222", background: "#0b0b0b" }}>
                 <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 6 }}>Preview:</div>
                 <img
-                  src={imageUrl}
+                  src={getImagePath(imageUrl)}
                   alt="Preview"
                   style={{
                     maxWidth: "100%",
