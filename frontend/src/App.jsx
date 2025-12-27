@@ -819,6 +819,10 @@ function AdminProductsPage({ token }) {
         return d;
       })
       .then(() => {
+        setName("");
+        setPrice("");
+        setImageUrl("");
+        setCategory("merch");
         load();
       })
       .catch((err) => {
@@ -829,16 +833,15 @@ function AdminProductsPage({ token }) {
           const products = stored ? JSON.parse(stored) : [];
           products.push(newProduct);
           localStorage.setItem('products', JSON.stringify(products));
+          setName("");
+          setPrice("");
+          setImageUrl("");
+          setCategory("merch");
           load(); // Перезагружаем список
         } catch (e) {
           setError("Could not save product: " + e.message);
         }
       });
-    
-    setName("");
-    setPrice("");
-    setImageUrl("");
-    setCategory("merch");
   }
 
   function startEdit(p) {
