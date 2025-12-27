@@ -963,7 +963,7 @@ function AdminProductsPage({ token }) {
                           <div style={{ marginTop: 8, padding: 8, border: "1px solid #222", background: "#0b0b0b" }}>
                             <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 6 }}>Preview:</div>
                             <img
-                              src={editImageUrl}
+                              src={getImagePath(editImageUrl)}
                               alt="Preview"
                               style={{
                                 maxWidth: "100%",
