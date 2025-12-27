@@ -10,18 +10,27 @@ function money(n) {
 // Получить правильный путь к изображению с учетом base path для GitHub Pages
 function getImagePath(path) {
   if (!path) return path;
-  // Если путь начинается с /img/, добавляем base path
-  if (path.startsWith('/img/')) {
-    return '/carti-merch-store' + path;
+  
+  // Если путь уже содержит base path, возвращаем как есть
+  if (path.includes('/carti-merch-store/')) {
+    return path;
   }
+  
   // Если это внешний URL, возвращаем как есть
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
-  // Для относительных путей, начинающихся с /, добавляем base path
-  if (path.startsWith('/')) {
+  
+  // Для путей, начинающихся с /, добавляем base path только если мы на GitHub Pages
+  // Определяем по hostname (github.io) или по базовому пути в window.location
+  const isGitHubPages = window.location.hostname.includes('github.io') || 
+                        window.location.pathname.startsWith('/carti-merch-store');
+  
+  if (path.startsWith('/') && isGitHubPages) {
     return '/carti-merch-store' + path;
   }
+  
+  // Для локальной разработки возвращаем путь как есть
   return path;
 }
 
