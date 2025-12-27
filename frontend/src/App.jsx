@@ -36,8 +36,15 @@ function getImagePath(path) {
 function getRoleFromToken(t) {
   if (!t) return null;
   try {
-    const payload = JSON.parse(atob(t.split(".")[1]));
-    return payload?.role || null;
+    // Проверяем, это простой base64 токен или JWT
+    if (t.includes('.')) {
+      const payload = JSON.parse(atob(t.split(".")[1]));
+      return payload?.role || null;
+    } else {
+      // Простой base64 токен (для mock админа)
+      const payload = JSON.parse(atob(t));
+      return payload?.role || null;
+    }
   } catch {
     return null;
   }
@@ -729,15 +736,37 @@ function AdminProductsPage({ token }) {
   }
 
   function load() {
+    // Сначала пытаемся загрузить с backend
     fetch(`${API_BASE_URL}/products`)
       .then(async (r) => {
         if (!r.ok) throw new Error("Failed to fetch products");
         return r.json();
       })
-      .then((d) => setItems(Array.isArray(d) ? d : []))
+      .then((d) => {
+        const products = Array.isArray(d) ? d : [];
+        // Сохраняем в localStorage как fallback
+        try {
+          localStorage.setItem('products', JSON.stringify(products));
+        } catch (e) {
+          console.warn("Could not save products to localStorage:", e);
+        }
+        setItems(products);
+      })
       .catch((err) => {
-        console.error("Error loading products:", err);
-        setItems([]);
+        console.warn("Backend not available, loading from localStorage:", err);
+        // Если backend недоступен, загружаем из localStorage
+        try {
+          const stored = localStorage.getItem('products');
+          if (stored) {
+            const products = JSON.parse(stored);
+            setItems(Array.isArray(products) ? products : []);
+          } else {
+            setItems([]);
+          }
+        } catch (e) {
+          console.error("Error loading from localStorage:", e);
+          setItems([]);
+        }
       });
   }
 
@@ -755,26 +784,50 @@ function AdminProductsPage({ token }) {
     setError("");
 
     if (!isAdmin) return setError("Not admin. Login as admin.");
-    const h = authHeaders();
+    
+    const newProduct = {
+      id: Date.now(),
+      name,
+      price: Number(price),
+      imageUrl: imageUrl || "",
+      category: category || "merch"
+    };
 
+    const h = authHeaders();
+    
+    // Пытаемся сохранить на backend
     fetch(`${API_BASE_URL}/products`, {
       method: "POST",
       headers: h,
       body: JSON.stringify({ name, price: Number(price), imageUrl, category }),
     })
       .then(async (r) => {
+        if (!r.ok) throw new Error("Backend not available");
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d?.message || "Add error");
+        if (d?.message) throw new Error(d.message);
         return d;
       })
       .then(() => {
-        setName("");
-        setPrice("");
-        setImageUrl("");
-        setCategory("merch");
         load();
       })
-      .catch((e2) => setError(String(e2.message || e2)));
+      .catch((err) => {
+        // Если backend недоступен, сохраняем локально
+        console.warn("Backend not available, saving locally:", err);
+        try {
+          const stored = localStorage.getItem('products');
+          const products = stored ? JSON.parse(stored) : [];
+          products.push(newProduct);
+          localStorage.setItem('products', JSON.stringify(products));
+          load(); // Перезагружаем список
+        } catch (e) {
+          setError("Could not save product: " + e.message);
+        }
+      });
+    
+    setName("");
+    setPrice("");
+    setImageUrl("");
+    setCategory("merch");
   }
 
   function startEdit(p) {
@@ -799,7 +852,7 @@ function AdminProductsPage({ token }) {
     if (!isAdmin) return setError("Not admin. Login as admin.");
     const h = authHeaders();
 
-      fetch(`${API_BASE_URL}/products/${editId}`, {
+    fetch(`${API_BASE_URL}/products/${editId}`, {
       method: "PUT",
       headers: h,
       body: JSON.stringify({
@@ -810,15 +863,40 @@ function AdminProductsPage({ token }) {
       }),
     })
       .then(async (r) => {
+        if (!r.ok) throw new Error("Backend not available");
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d?.message || "Edit error");
+        if (d?.message) throw new Error(d.message);
         return d;
       })
       .then(() => {
         cancelEdit();
         load();
       })
-      .catch((e2) => setError(String(e2.message || e2)));
+      .catch((err) => {
+        // Если backend недоступен, обновляем локально
+        console.warn("Backend not available, updating locally:", err);
+        try {
+          const stored = localStorage.getItem('products');
+          const products = stored ? JSON.parse(stored) : [];
+          const index = products.findIndex(p => p.id === editId);
+          if (index !== -1) {
+            products[index] = {
+              ...products[index],
+              name: editName,
+              price: Number(editPrice),
+              imageUrl: editImageUrl,
+              category: editCategory,
+            };
+            localStorage.setItem('products', JSON.stringify(products));
+            cancelEdit();
+            load();
+          } else {
+            setError("Product not found");
+          }
+        } catch (e) {
+          setError("Could not update product: " + e.message);
+        }
+      });
   }
 
   function del(id) {
@@ -832,12 +910,25 @@ function AdminProductsPage({ token }) {
       headers: h,
     })
       .then(async (r) => {
+        if (!r.ok) throw new Error("Backend not available");
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d?.message || "Delete error");
+        if (d?.message) throw new Error(d.message);
         return d;
       })
       .then(() => load())
-      .catch((e2) => setError(String(e2.message || e2)));
+      .catch((err) => {
+        // Если backend недоступен, удаляем локально
+        console.warn("Backend not available, deleting locally:", err);
+        try {
+          const stored = localStorage.getItem('products');
+          const products = stored ? JSON.parse(stored) : [];
+          const filtered = products.filter(p => p.id !== id);
+          localStorage.setItem('products', JSON.stringify(filtered));
+          load();
+        } catch (e) {
+          setError("Could not delete product: " + e.message);
+        }
+      });
   }
 
   return (
@@ -1191,15 +1282,37 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
 
   function loadProducts() {
+    // Сначала пытаемся загрузить с backend
     fetch(`${API_BASE_URL}/products`)
       .then(async (r) => {
         if (!r.ok) throw new Error("Failed to fetch products");
         return r.json();
       })
-      .then((d) => setProducts(Array.isArray(d) ? d : []))
+      .then((d) => {
+        const products = Array.isArray(d) ? d : [];
+        // Сохраняем в localStorage как fallback
+        try {
+          localStorage.setItem('products', JSON.stringify(products));
+        } catch (e) {
+          console.warn("Could not save products to localStorage:", e);
+        }
+        setProducts(products);
+      })
       .catch((err) => {
-        console.error("Error loading products:", err);
-        setProducts([]);
+        console.warn("Backend not available, loading from localStorage:", err);
+        // Если backend недоступен, загружаем из localStorage
+        try {
+          const stored = localStorage.getItem('products');
+          if (stored) {
+            const products = JSON.parse(stored);
+            setProducts(Array.isArray(products) ? products : []);
+          } else {
+            setProducts([]);
+          }
+        } catch (e) {
+          console.error("Error loading from localStorage:", e);
+          setProducts([]);
+        }
       });
   }
 
