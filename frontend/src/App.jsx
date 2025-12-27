@@ -480,7 +480,12 @@ function AccountPage({ token, setToken }) {
       fetch(`${API_BASE_URL}/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then((r) => r.json())
+        .then(async (r) => {
+          if (!r.ok) {
+            throw new Error("Failed to fetch user data");
+          }
+          return r.json();
+        })
         .then((d) => {
           if (d?.id) {
             const payload = JSON.parse(atob(token.split(".")[1]));
@@ -494,7 +499,8 @@ function AccountPage({ token, setToken }) {
           }
           setLoading(false);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("Error loading user data:", err);
           setLoading(false);
         });
     }
@@ -724,7 +730,10 @@ function AdminProductsPage({ token }) {
 
   function load() {
     fetch(`${API_BASE_URL}/products`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Failed to fetch products");
+        return r.json();
+      })
       .then((d) => setItems(Array.isArray(d) ? d : []))
       .catch((err) => {
         console.error("Error loading products:", err);
@@ -1183,7 +1192,10 @@ export default function App() {
 
   function loadProducts() {
     fetch(`${API_BASE_URL}/products`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Failed to fetch products");
+        return r.json();
+      })
       .then((d) => setProducts(Array.isArray(d) ? d : []))
       .catch((err) => {
         console.error("Error loading products:", err);
